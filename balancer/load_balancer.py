@@ -1,42 +1,41 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 import requests
+import os
+
 from hash_ring import ConsistentHashRing
-import subprocess
 
 app = Flask(__name__)
 ring = ConsistentHashRing()
-replicas = {
-    1: "server1",
-    2: "server2",
-    3: "server3"
-}
 
-# Register servers to the hash ring
-for sid in replicas:
-    ring.add_server(sid)
+# Initial servers (assumes 3 are already running)
+for i in range(1, 4):  # Server IDs: 1, 2, 3
+    ring.add_server(i)
 
-@app.route("/rep", methods=["GET"])
+
+@app.route('/home', methods=['GET'])
+def route_request():
+    try:
+        req_id = int(request.args.get("id", 0))
+        server = ring.get_server(req_id)
+        port = 5000
+        host = f"http://server{server}:{port}/home"
+        res = requests.get(host)
+
+        return jsonify(res.json()), res.status_code
+    except Exception as e:
+        return jsonify({"error": str(e), "message": "Server unavailable"}), 500
+
+
+@app.route('/rep', methods=['GET'])
 def get_replicas():
     return jsonify({
         "message": {
-            "N": len(replicas),
-            "replicas": [f"Server {sid}" for sid in replicas]
+            "N": len(ring.servers),
+            "replicas": [f"Server {s}" for s in ring.servers]
         },
         "status": "successful"
-    }), 200
+    })
 
-@app.route("/home", methods=["GET"])
-def route_home():
-    # Use client IP hash as request ID
-    request_id = str(hash(request.remote_addr))[-6:]
-    server_id = ring.get_server(int(request_id))
-    port = replicas.get(server_id)
-
-    try:
-        res = requests.get(f"http://server{server_id}:5000/home")
-        return jsonify(res.json()), 200
-    except Exception as e:
-        return jsonify({"message": "Server unavailable", "error": str(e)}), 500
 
 @app.route('/add', methods=['POST'])
 def add_servers():
@@ -48,27 +47,53 @@ def add_servers():
         if not n or not hostnames or len(hostnames) != n:
             return jsonify({"error": "Invalid input"}), 400
 
+        created = []
+
         for i in range(n):
             hostname = hostnames[i]
             server_id = len(ring.servers) + 1
-            container_name = f"server{server_id}"
-            port = 5000
 
-            # Start Docker container
-            subprocess.run([
-                "docker", "run", "-d",
-                "--name", container_name,
-                "--network", "load_balancer_net1",
-                "-e", f"SERVER_ID={server_id}",
-                "server"
-            ], check=True)
+            print(f"[INFO] Please start container: server{server_id} with SERVER_ID={server_id}")
 
-            # Register in the hash ring
             ring.add_server(server_id)
+            created.append(f"server{server_id}")
 
-        return jsonify({"message": f"{n} servers added.", "servers": hostnames}), 200
+        return jsonify({
+            "message": f"{n} servers added to hash ring. Start containers manually.",
+            "servers": created
+        }), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+
+@app.route('/rm', methods=['POST'])
+def remove_servers():
+    try:
+        data = request.get_json()
+        ids = data.get("ids")
+
+        if not ids or not isinstance(ids, list):
+            return jsonify({"error": "Invalid input, expected list of server IDs"}), 400
+
+        removed = []
+
+        for server_id in ids:
+            if server_id in ring.servers:
+                ring.remove_server(server_id)
+                print(f"[INFO] Please stop container: server{server_id}")
+                removed.append(f"server{server_id}")
+            else:
+                print(f"[WARN] Server {server_id} not found in hash ring.")
+
+        return jsonify({
+            "message": f"{len(removed)} servers removed from hash ring. Stop containers manually.",
+            "servers": removed
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
