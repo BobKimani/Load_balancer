@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import requests
 import os
+import threading
+import time
 
 from hash_ring import ConsistentHashRing
 
@@ -95,5 +97,20 @@ def remove_servers():
         return jsonify({"error": str(e)}), 500
 
 
+def heartbeat(interval=10):
+    while True:
+        time.sleep(interval)
+        for server_id in ring.servers.copy():
+            try:
+                host = f"http://server{server_id}:5000/home"
+                res = requests.get(host, timeout=2)
+                if res.status_code != 200:
+                    raise Exception(f"Bad status {res.status_code}")
+            except Exception:
+                print(f"[HEARTBEAT] Server {server_id} unreachable. Removing from hash ring.")
+                ring.remove_server(server_id)
+
+
 if __name__ == '__main__':
+    threading.Thread(target=heartbeat, daemon=True).start()
     app.run(host='0.0.0.0', port=5000)
