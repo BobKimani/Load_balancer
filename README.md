@@ -29,6 +29,7 @@ All services (servers and balancer) are containerized and communicate using Dock
 curl http://localhost:5000/home
 ```
 
+![image](https://github.com/user-attachments/assets/fdacebec-208f-4295-9222-90807b849d11)
 
 ## ✅ Task 2: Consistent Hashing Implementation & Testing
 
@@ -49,15 +50,30 @@ curl http://localhost:5000/home
 python balancer/test_ring.py
 ```
 
-### ✅ Expected Output (example):
-```bash
-Request ID → Server
-0 → Server 3
-1 → Server 2
-2 → Server 1
- ...
-```
+### ✅ Expected Output:
+
+![image](https://github.com/user-attachments/assets/6324c59d-24c4-4016-aaa7-e190490a9032)
+
 - (Shows which server each request ID is routed to)
 
-### 📸 Screenshot Suggestion:
+
+## Task 3: Dynamic Addition of Server Nodes
+### Objective
+- Implement dynamic scalability of the system by allowing new replica nodes to be added to the consistent hash ring at runtime without restarting the system.
+
+### Key Implementation Details
+- A new API endpoint /add (HTTP POST) was created in the load_balancer.py to allow runtime server additions.
+- The consistent hash ring is updated to include new server IDs.
+- The load balancer no longer attempts to start Docker containers directly (for security and portability reasons).
+
+Instead, users are instructed to manually start containers on the host after the hash ring is updated.
+
+### 🧪 Testing the /add Endpoint
+- Use curl to add new server(s):
+- 🐳 Manually Starting the New Server Container
+  
+### Screenshot of the manual starting of the new server container
+
+![image](https://github.com/user-attachments/assets/824172bc-9900-4a61-8813-49f2b0e361ec)
+
 
