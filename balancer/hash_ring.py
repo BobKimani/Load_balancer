@@ -7,6 +7,7 @@ class ConsistentHashRing:
         self.virtual_nodes = virtual_nodes
         self.ring = {}  # slot index -> server_id
         self.sorted_keys = []  # sorted list of slot indices
+        self.servers = []
 
     def _hash(self, key):
         """Generic hash function using MD5 + modulo ring size"""
@@ -21,16 +22,19 @@ class ConsistentHashRing:
         return (i + (2 ** i) + 17) % self.num_slots
 
     def add_server(self, server_id):
-        """Add virtual replicas of a physical server"""
+        if server_id in self.servers:
+            return
+        self.servers.append(server_id)
+      
         for j in range(self.virtual_nodes):
-            slot = self._server_hash(server_id, j)
+            index = (server_id + j + 2**j + 25) % self.num_slots
+            while index in self.ring:
+                index = (index + 1) % self.num_slots
+            self.ring[index] = server_id
+            self.sorted_keys.append(index)
+        self.sorted_keys.sort()
 
-            # Resolve collision via linear probing
-            while slot in self.ring:
-                slot = (slot + 1) % self.num_slots
-
-            self.ring[slot] = server_id
-            bisect.insort(self.sorted_keys, slot)
+     
 
     def remove_server(self, server_id):
         """Remove all virtual nodes of a server"""

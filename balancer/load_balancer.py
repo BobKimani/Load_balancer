@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import requests
 from hash_ring import ConsistentHashRing
+import subprocess
 
 app = Flask(__name__)
 ring = ConsistentHashRing()
@@ -36,6 +37,38 @@ def route_home():
         return jsonify(res.json()), 200
     except Exception as e:
         return jsonify({"message": "Server unavailable", "error": str(e)}), 500
+
+@app.route('/add', methods=['POST'])
+def add_servers():
+    try:
+        data = request.get_json()
+        n = data.get("n")
+        hostnames = data.get("hostnames")
+
+        if not n or not hostnames or len(hostnames) != n:
+            return jsonify({"error": "Invalid input"}), 400
+
+        for i in range(n):
+            hostname = hostnames[i]
+            server_id = len(ring.servers) + 1
+            container_name = f"server{server_id}"
+            port = 5000
+
+            # Start Docker container
+            subprocess.run([
+                "docker", "run", "-d",
+                "--name", container_name,
+                "--network", "load_balancer_net1",
+                "-e", f"SERVER_ID={server_id}",
+                "server"
+            ], check=True)
+
+            # Register in the hash ring
+            ring.add_server(server_id)
+
+        return jsonify({"message": f"{n} servers added.", "servers": hostnames}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
