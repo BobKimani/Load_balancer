@@ -1,26 +1,63 @@
 # Load Balancing
 
-This is a simple Python Flask web server used in a Distributed Systems project. It is meant to act as a minimal backend server managed by a load balancer for load distribution using consistent hashing.
+## 📌 Overview
+
+This project implements a lightweight **load balancer** using **consistent hashing** and **Docker-based container orchestration**. It dynamically routes HTTP requests to backend servers and supports horizontal scaling via hashing logic.
+
+All services (servers and balancer) are containerized and communicate using Docker’s internal network via Docker Compose.
 
 ---
 
-## 🛠️ Features
+## ✅ Task 1: Server Implementation
 
-- Responds to `/home` endpoint with a unique server ID
-- Responds to `/heartbeat` to signal it is alive
-- Containerized using Docker
-- SERVER_ID passed as environment variable
+### 🔨 Features
 
----
+- Lightweight Flask server exposing:
+  - `GET /home` → `{"message": "Hello from Server: X", "status": "successful"}`
+  - `GET /heartbeat` → 200 OK (for future health checks)
+- Parameterized using `SERVER_ID` environment variable
+- Dockerized for replication
 
-## 🔧 Endpoints
+### 📂 Location
 
-### `GET /home`
+- `server/server.py`
+- `server/Dockerfile`
 
-Returns a JSON response with a message showing the unique server ID.
+### 🧪 How to Test
 
-```json
-{
-  "message": "Hello from Server: [ID]",
-  "status": "successful"
-}
+```bash
+curl http://localhost:5000/home
+```
+
+
+## ✅ Task 2: Consistent Hashing Implementation & Testing
+
+🔹 Consistent Hash Ring Details:
+ - Ring size: 512
+ - 9 virtual nodes per physical server
+ - Request hash:      H(i)  = i + 2^i + 17
+ - Virtual node hash: Φ(i,j) = i + j + 2^j + 25
+ - Collision resolution: linear probing
+ - Server lookup: clockwise search
+
+### 🔹 Files Involved:
+ - balancer/hash_ring.py       # Implements the ConsistentHashRing class
+ - balancer/test_ring.py       # Test script for verifying server mapping
+
+### 🧪 Run the test script to verify the consistent hashing behavior
+```bash
+python balancer/test_ring.py
+```
+
+### ✅ Expected Output (example):
+```bash
+Request ID → Server
+0 → Server 3
+1 → Server 2
+2 → Server 1
+ ...
+```
+- (Shows which server each request ID is routed to)
+
+### 📸 Screenshot Suggestion:
+
