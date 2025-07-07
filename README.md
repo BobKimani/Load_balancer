@@ -114,20 +114,49 @@ docker rm server3
 
 ![image](https://github.com/user-attachments/assets/0ba718b8-7ec5-4707-9c02-fa5f62036434)
 
-### How to Test
-- Start the system.
-- Stop one of the backend servers.
-- Wait ~10 seconds for the heartbeat to detect failure.
-- Check current replicas:
+## How to Test
+- To validate the effectiveness of the load balancer and ensure fair request distribution across servers, a test script (load_test.py) was created and used.
+- Run Load Testing by navigating to the root of the project:
+
+```bash
+cd load_balancer
+```
+- Run the file:
+```bash
+python balancer/load_test.py
+```
+- This will send 10,000 HTTP GET requests to the /home endpoint of the load balancer (localhost:5000), each tagged with a different request ID. These requests are routed to backend servers based on consistent hashing.
+
+#### Screenshot of the output
+This indicates how requests were distributed among the available servers.
+
+![image](https://github.com/user-attachments/assets/dcdf1e45-a077-4d37-9ca4-77a8ab87fed6)
+
+
+
+#### Visualizing the Distribution
+- The script also generates a bar chart of the server load distribution and saves it as load distribution.png
+- You will need to have install a library like feh to preview the chart:
   
-  ![image](https://github.com/user-attachments/assets/b0b4faea-58b0-4aba-a4b0-c26b897a5d5c)
+```bash
+sudo pacman -S feh
+```
+- Preview the chart:
 
-- You must manually stop or restart Docker containers as needed.
+ ```bash
+feh load_distribution.png
+```
 
-# Conclusions
-- The API Summary
+💡 Make sure you have matplotlib installed in your virtual environment:
 
-![image](https://github.com/user-attachments/assets/81b9b56b-50a3-4f7d-8467-a367ebb4e2d8)
+```bash
+pip install matplotlib
+```
+
+#### Screenshot of the visualization
+![image](https://github.com/user-attachments/assets/b44aab04-c819-423d-a007-4577518c0dea)
+
+
 
 
 
